@@ -126,7 +126,9 @@ public class CreateExcel {
             e.printStackTrace();
         }finally {
             try {
-                outputStream.close();
+                if(outputStream !=null){
+                    outputStream.close();
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
