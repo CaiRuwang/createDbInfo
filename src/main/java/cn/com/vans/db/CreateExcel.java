@@ -34,25 +34,40 @@ public class CreateExcel {
     public static final String QUERY_TABLE_SQL_1="SELECT c.table_name, c.column_Name, t.table_comment , c.data_Type, c.is_Nullable, c.column_Type, c.column_Comment, c.column_key AS prikey " +
             "FROM information_schema.COLUMNS c ,information_schema.TABLES t WHERE c.TABLE_SCHEMA =t.TABLE_SCHEMA and c.TABLE_NAME=t.TABLE_NAME and t.TABLE_TYPE={1} and c.TABLE_SCHEMA={0} and t.table_Name in ({2})";
 
+    public static final String QUERY_TABLE_INFO_SQL_ORCL="SELECT ut.table_name, us.column_Name, c.comments as table_comment, us.data_Type,  us.nullable as is_Nullable, '' as column_Type , '' as prikey ,"+
+            "(select comments from  user_col_comments where column_name =us.column_name and table_name = us.table_name) as  column_Comment FROM  user_tab_comments c, " +
+            " user_tables ut, user_tab_columns us WHERE   ut.table_name = c.table_name AND us.table_name =ut.table_name order by ut.table_name";
+
+
+
 
     public static void main(String[] args){
         Properties properties =AppConfig.getProperties("jdbc.properties");
+        String dbType=properties.getProperty("dbType");
         String tableSchema=properties.getProperty("queryDbName");
         String  path =System.getProperty("user.dir");
         System.out.println("获取资源文件路径位置："+path +" ; tableSchema:"+tableSchema);
         String tableNames = properties.getProperty("queryTableNams");
         String format ;
-        if(StringUtils.isEmpty(tableNames)){
-            format=MessageFormat.format(QUERY_TABLE_INFO_SQL, new Object[]{"'"+tableSchema+"'","'BASE TABLE'"});
+        if(StringUtils.isNotEmpty(dbType) && "oracle".equals(dbType)){
+            format=QUERY_TABLE_INFO_SQL_ORCL;
         }else{
+            if(StringUtils.isEmpty(tableNames)){
+                format=MessageFormat.format(QUERY_TABLE_INFO_SQL, new Object[]{"'"+tableSchema+"'","'BASE TABLE'"});
+            }else{
 
-            format=MessageFormat.format(QUERY_TABLE_SQL_1, new Object[]{"'"+tableSchema+"'","'BASE TABLE'",tableNames(tableNames)});
+                format=MessageFormat.format(QUERY_TABLE_SQL_1, new Object[]{"'"+tableSchema+"'","'BASE TABLE'",tableNames(tableNames)});
+            }
         }
+
         System.out.println("执行SQL语句："+format);
         List<TableInfoModel> tableInfoModels = tableInfoModelList(format);
         System.out.println("SQL执行完毕，共查询出"+tableInfoModels.size()+"个字段");
         createExcel(tableInfoModels,tableSchema,System.getProperty("user.dir"));
+
     }
+
+
 
 
     public static String tableNames(String tableNames){
@@ -74,7 +89,7 @@ public class CreateExcel {
      * 根据查询的List对象信息进行生产Excel
      * @param tableInfoModelList
      */
-    public static  void createExcel( List <TableInfoModel> tableInfoModelList,String excelFileName,String path) {
+    private static  void createExcel( List <TableInfoModel> tableInfoModelList,String excelFileName,String path) {
         String []title = {"table_name","table_comment","column_Name","data_Type","is_Nullable","column_Type","column_Comment","prikey"};
         //创建HSSF工作薄
         HSSFWorkbook workbook = new HSSFWorkbook();
